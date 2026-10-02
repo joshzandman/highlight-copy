@@ -396,13 +396,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let cocoa = cocoaPoint(fromQuartz: event.location)
         let clicks = max(Int(event.getIntegerValueField(.mouseEventClickState)), 1)
+        let optionDown = event.flags.contains(.maskAlternate)
         switch type {
         case .leftMouseDown:
-            notePointer(.down, at: cocoa, clickCount: clicks)
+            notePointer(.down, at: cocoa, clickCount: clicks, optionDown: optionDown)
         case .leftMouseDragged:
-            notePointer(.drag, at: cocoa, clickCount: clicks)
+            notePointer(.drag, at: cocoa, clickCount: clicks, optionDown: optionDown)
         case .leftMouseUp:
-            notePointer(.up, at: cocoa, clickCount: clicks)
+            notePointer(.up, at: cocoa, clickCount: clicks, optionDown: optionDown)
         default:
             break
         }
@@ -411,13 +412,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func handle(_ event: NSEvent) {
         let point = NSEvent.mouseLocation
         let clicks = max(event.clickCount, 1)
+        let optionDown = event.modifierFlags.contains(.option)
         switch event.type {
         case .leftMouseDown:
-            notePointer(.down, at: point, clickCount: clicks)
+            notePointer(.down, at: point, clickCount: clicks, optionDown: optionDown)
         case .leftMouseDragged:
-            notePointer(.drag, at: point, clickCount: clicks)
+            notePointer(.drag, at: point, clickCount: clicks, optionDown: optionDown)
         case .leftMouseUp:
-            notePointer(.up, at: point, clickCount: clicks)
+            notePointer(.up, at: point, clickCount: clicks, optionDown: optionDown)
         default:
             break
         }
@@ -429,15 +431,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard enabled else { return }
         let down = NSEvent.pressedMouseButtons & 1 != 0
         let point = NSEvent.mouseLocation
+        let optionDown = NSEvent.modifierFlags.contains(.option)
         if down {
             if gestureOpen {
+                if optionDown {
+                    gesture.noteOptionHeld()
+                }
                 gesture.mouseDragged(to: point)
             }
             buttonWasDown = true
         } else if buttonWasDown {
             buttonWasDown = false
             if gestureOpen {
-                notePointer(.up, at: point, clickCount: max(gesture.clickCount, 1))
+                notePointer(.up, at: point, clickCount: max(gesture.clickCount, 1), optionDown: optionDown)
             }
         }
     }
@@ -448,25 +454,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case up
     }
 
-    private func notePointer(_ phase: PointerPhase, at point: CGPoint, clickCount: Int) {
+    private func notePointer(_ phase: PointerPhase, at point: CGPoint, clickCount: Int, optionDown: Bool) {
         guard enabled else { return }
         switch phase {
         case .down:
-            beginPointer(at: point, clickCount: clickCount)
+            beginPointer(at: point, clickCount: clickCount, optionDown: optionDown)
         case .drag:
             if !gestureOpen {
-                beginPointer(at: point, clickCount: 1)
+                beginPointer(at: point, clickCount: 1, optionDown: optionDown)
+            } else if optionDown {
+                gesture.noteOptionHeld()
             }
             gesture.mouseDragged(to: point)
         case .up:
             guard gestureOpen else { return }
+            if optionDown {
+                gesture.noteOptionHeld()
+            }
             gesture.mouseUp(at: point, clickCount: clickCount)
             gestureOpen = false
             finishPointer(at: point)
         }
     }
 
-    private func beginPointer(at point: CGPoint, clickCount: Int) {
+    private func beginPointer(at point: CGPoint, clickCount: Int, optionDown: Bool) {
         if clickCount <= 1 {
             copyGeneration += 1
         }
@@ -478,6 +489,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let existing = clickCount <= 1 ? (target.selectedText ?? "") : ""
         gesture.mouseDown(at: point, clickCount: clickCount, selectedText: existing)
+        // mouseDown clears the flag on a new click, so record Option after that.
+        if optionDown {
+            gesture.noteOptionHeld()
+        }
         gestureOpen = true
         buttonWasDown = true
     }
@@ -485,6 +500,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func finishPointer(at point: CGPoint) {
         guard gesture.isHighlight else {
             lastDebug = "ignored clicks=\(gesture.clickCount) travel=\(travelText)"
+            publishStatus()
+            return
+        }
+        // Return before any pasteboard write or Command-C. Option during the gesture means leave the clipboard alone.
+        if gesture.optionHeld {
+            lastDebug = "option"
             publishStatus()
             return
         }

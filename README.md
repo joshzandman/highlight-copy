@@ -13,6 +13,7 @@ These actions do not change the clipboard:
 - A plain click
 - A drag that does not change the existing selection
 - Text in a password field
+- A highlight made while holding the Option key. Holding it at any point during the drag, double-click, or triple-click skips the copy.
 
 ## Requirements
 

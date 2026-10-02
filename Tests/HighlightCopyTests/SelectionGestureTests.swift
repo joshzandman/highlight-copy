@@ -86,6 +86,58 @@ final class SelectionGestureTests: XCTestCase {
         XCTAssertTrue(CopyDecision.shouldCopy(gesture: gesture, selectedText: "the whole line"))
     }
 
+    func testOptionHeldDuringDragDoesNotCopy() {
+        var gesture = SelectionGesture()
+        gesture.mouseDown(at: .zero, clickCount: 1, selectedText: "")
+        gesture.noteOptionHeld()
+        gesture.mouseDragged(to: CGPoint(x: 12, y: 0))
+        gesture.mouseUp(at: CGPoint(x: 12, y: 0), clickCount: 1)
+        XCTAssertTrue(gesture.isHighlight)
+        XCTAssertTrue(gesture.optionHeld)
+        XCTAssertFalse(CopyDecision.shouldCopy(gesture: gesture, selectedText: "hello"))
+    }
+
+    func testOptionOnReleaseDoesNotCopy() {
+        var gesture = SelectionGesture()
+        gesture.mouseDown(at: .zero, clickCount: 1, selectedText: "")
+        gesture.mouseDragged(to: CGPoint(x: 12, y: 0))
+        gesture.noteOptionHeld()
+        gesture.mouseUp(at: CGPoint(x: 12, y: 0), clickCount: 1)
+        XCTAssertFalse(CopyDecision.shouldCopy(gesture: gesture, selectedText: "hello"))
+    }
+
+    func testFreshClickClearsOptionHeld() {
+        var gesture = SelectionGesture()
+        gesture.mouseDown(at: .zero, clickCount: 1, selectedText: "")
+        gesture.noteOptionHeld()
+        gesture.mouseUp(at: CGPoint(x: 12, y: 0), clickCount: 1)
+        gesture.mouseDown(at: .zero, clickCount: 1, selectedText: "")
+        gesture.mouseDragged(to: CGPoint(x: 12, y: 0))
+        XCTAssertFalse(gesture.optionHeld)
+        XCTAssertTrue(CopyDecision.shouldCopy(gesture: gesture, selectedText: "hello"))
+    }
+
+    func testOptionOnTheFirstClickOfADoubleClickStillSuppresses() {
+        var gesture = SelectionGesture()
+        gesture.mouseDown(at: .zero, clickCount: 1, selectedText: "")
+        gesture.noteOptionHeld()
+        gesture.mouseUp(at: .zero, clickCount: 1)
+        gesture.mouseDown(at: .zero, clickCount: 2, selectedText: "word")
+        gesture.mouseUp(at: .zero, clickCount: 2)
+        XCTAssertTrue(gesture.optionHeld)
+        XCTAssertFalse(CopyDecision.shouldCopy(gesture: gesture, selectedText: "word"))
+    }
+
+    func testOptionOnTheSecondClickSuppresses() {
+        var gesture = SelectionGesture()
+        gesture.mouseDown(at: .zero, clickCount: 1, selectedText: "")
+        gesture.mouseUp(at: .zero, clickCount: 1)
+        gesture.mouseDown(at: .zero, clickCount: 2, selectedText: "word")
+        gesture.noteOptionHeld()
+        gesture.mouseUp(at: .zero, clickCount: 2)
+        XCTAssertFalse(CopyDecision.shouldCopy(gesture: gesture, selectedText: "word"))
+    }
+
     func testMouseUpFarFromAnchorIsAHighlightWithoutDragEvents() {
         var gesture = SelectionGesture()
         gesture.mouseDown(at: CGPoint(x: 10, y: 10), clickCount: 1, selectedText: "")
