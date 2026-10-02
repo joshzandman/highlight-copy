@@ -86,10 +86,41 @@ final class SelectionGestureTests: XCTestCase {
         XCTAssertTrue(CopyDecision.shouldCopy(gesture: gesture, selectedText: "the whole line"))
     }
 
+    func testMouseUpFarFromAnchorIsAHighlightWithoutDragEvents() {
+        var gesture = SelectionGesture()
+        gesture.mouseDown(at: CGPoint(x: 10, y: 10), clickCount: 1, selectedText: "")
+        gesture.mouseUp(at: CGPoint(x: 40, y: 18), clickCount: 1)
+        XCTAssertGreaterThan(gesture.travel, 3)
+        XCTAssertTrue(gesture.isHighlight)
+    }
+
     func testQuartzPointFlipsPrimaryDisplay() {
         let topLeft = ScreenCoordinates.quartzPoint(fromCocoa: CGPoint(x: 0, y: 1080), primaryHeight: 1080)
         XCTAssertEqual(topLeft, .zero)
         let bottomLeft = ScreenCoordinates.quartzPoint(fromCocoa: .zero, primaryHeight: 1080)
         XCTAssertEqual(bottomLeft, CGPoint(x: 0, y: 1080))
+        let cocoa = CGPoint(x: 40, y: 200)
+        let quartz = ScreenCoordinates.quartzPoint(fromCocoa: cocoa, primaryHeight: 1080)
+        let roundTrip = ScreenCoordinates.quartzPoint(fromCocoa: quartz, primaryHeight: 1080)
+        XCTAssertEqual(roundTrip, cocoa)
+    }
+
+    func testTooltipSitsJustPastTheSelection() {
+        let origin = TooltipPlacement.origin(
+            anchor: CGPoint(x: 100, y: 80),
+            size: CGSize(width: 50, height: 20),
+            visibleRect: CGRect(x: 0, y: 0, width: 400, height: 300)
+        )
+        XCTAssertEqual(origin, CGPoint(x: 106, y: 70))
+    }
+
+    func testTooltipFlipsWhenTheSelectionEndsAtTheScreenEdge() {
+        let origin = TooltipPlacement.origin(
+            anchor: CGPoint(x: 380, y: 80),
+            size: CGSize(width: 50, height: 20),
+            visibleRect: CGRect(x: 0, y: 0, width: 400, height: 300)
+        )
+        XCTAssertEqual(origin.x, 324)
+        XCTAssertEqual(origin.y, 70)
     }
 }

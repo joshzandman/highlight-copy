@@ -10,6 +10,8 @@ public struct SelectionGesture {
     public private(set) var anchor: CGPoint?
     public private(set) var dragged = false
     public private(set) var clickCount: Int = 0
+    /// Greatest distance from the anchor, in screen points.
+    public private(set) var travel: CGFloat = 0
     public var threshold: CGFloat = 3
 
     public init() {}
@@ -19,6 +21,7 @@ public struct SelectionGesture {
             snapshot = selectedText
             anchor = point
             dragged = false
+            travel = 0
             self.clickCount = max(clickCount, 0)
         } else {
             self.clickCount = max(self.clickCount, clickCount)
@@ -29,7 +32,9 @@ public struct SelectionGesture {
         guard let anchor else { return }
         let dx = point.x - anchor.x
         let dy = point.y - anchor.y
-        if (dx * dx + dy * dy) >= threshold * threshold {
+        let distance = (dx * dx + dy * dy).squareRoot()
+        if distance > travel { travel = distance }
+        if distance >= threshold {
             dragged = true
         }
     }

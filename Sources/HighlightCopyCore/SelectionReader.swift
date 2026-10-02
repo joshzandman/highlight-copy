@@ -38,12 +38,29 @@ public enum SelectionReader {
         target(atQuartzPoint: point).selectedText
     }
 
+    /// Trailing edge of the last selected glyph, in Quartz screen coordinates.
+    /// The point is the right-center of that glyph so a label can sit just past the highlight.
+    public static func selectionTail(atQuartzPoint point: CGPoint) -> CGPoint? {
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.25)
+        if let hit = element(at: point, in: system), let tail = tail(from: hit) {
+            return tail
+        }
+        if let focused = focusedElement(in: system), let tail = tail(from: focused) {
+            return tail
+        }
+        return nil
+    }
+
     private static func target(from element: AXUIElement) -> CopyTarget? {
         if isSecureChain(element) { return .secure }
         if let text = firstSelectedText(startingAt: element) {
             return .text(selected: text)
         }
-        if isTextualChain(element) { return .text(selected: nil) }
+        // Some apps expose a selected range but not the string. Command-C can still read it.
+        if hasSelectedRange(element) || isTextualChain(element) {
+            return .text(selected: nil)
+        }
         return nil
     }
 
@@ -88,6 +105,63 @@ public enum SelectionReader {
             current = parent(of: node)
         }
         return nil
+    }
+
+    private static func hasSelectedRange(_ element: AXUIElement, hops: Int = 12) -> Bool {
+        var current: AXUIElement? = element
+        for _ in 0..<hops {
+            guard let node = current else { return false }
+            if selectedRangeLength(of: node) > 0 { return true }
+            current = parent(of: node)
+        }
+        return false
+    }
+
+    private static func tail(from element: AXUIElement) -> CGPoint? {
+        var current: AXUIElement? = element
+        for _ in 0..<12 {
+            guard let node = current else { return nil }
+            if let range = selectedRange(of: node), range.length > 0,
+               let rect = bounds(of: CFRange(location: range.location + range.length - 1, length: 1), on: node) {
+                return CGPoint(x: rect.maxX, y: rect.midY)
+            }
+            current = parent(of: node)
+        }
+        return nil
+    }
+
+    private static func bounds(of range: CFRange, on element: AXUIElement) -> CGRect? {
+        var range = range
+        guard let value = AXValueCreate(.cfRange, &range) else { return nil }
+        var result: CFTypeRef?
+        let error = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            kAXBoundsForRangeParameterizedAttribute as CFString,
+            value,
+            &result
+        )
+        guard error == .success, let result else { return nil }
+        guard CFGetTypeID(result) == AXValueGetTypeID() else { return nil }
+        let axValue = result as! AXValue
+        guard AXValueGetType(axValue) == .cgRect else { return nil }
+        var rect = CGRect.zero
+        guard AXValueGetValue(axValue, .cgRect, &rect) else { return nil }
+        guard rect.width > 0 || rect.height > 0 else { return nil }
+        return rect
+    }
+
+    private static func selectedRange(of element: AXUIElement) -> CFRange? {
+        guard let value = copiedValue(kAXSelectedTextRangeAttribute, of: element) else { return nil }
+        guard CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        let axValue = value as! AXValue
+        guard AXValueGetType(axValue) == .cfRange else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(axValue, .cfRange, &range) else { return nil }
+        return range
+    }
+
+    private static func selectedRangeLength(of element: AXUIElement) -> Int {
+        selectedRange(of: element)?.length ?? 0
     }
 
     private static func isSecureChain(_ element: AXUIElement, hops: Int = 5) -> Bool {
