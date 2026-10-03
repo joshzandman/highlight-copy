@@ -23,8 +23,6 @@ These actions do not change the clipboard:
 
 Accessibility lets the app see the pointer release and read the selected text. On macOS 13 and 14, turn it on under **System Settings → Privacy & Security → Accessibility**. On newer macOS versions the same list is titled **Device Control and Data Access**. The menu item **Open Device Control and Data Access…** opens that list.
 
-If the switch is already on for an older copy of the app and copying does not start, turn the switch off and then on again, then choose **Relaunch** from the menu.
-
 ## Install
 
 From this directory:
