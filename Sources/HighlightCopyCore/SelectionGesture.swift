@@ -12,8 +12,9 @@ public struct SelectionGesture {
     public private(set) var clickCount: Int = 0
     /// Greatest distance from the anchor, in screen points.
     public private(set) var travel: CGFloat = 0
-    /// True when Option was down at any point in this gesture. A fresh click clears it;
-    /// a later click in a multi-click does not, so holding Option on the word or line still counts.
+    /// True when Option was down at any point in this gesture. Holding Option is what copies.
+    /// A fresh click clears it; a later click in a multi-click does not, so holding Option
+    /// on the word or line still counts.
     public private(set) var optionHeld = false
     public var threshold: CGFloat = 3
 
@@ -61,7 +62,7 @@ public struct SelectionGesture {
 public enum CopyDecision {
     public static func shouldCopy(gesture: SelectionGesture, selectedText: String) -> Bool {
         guard gesture.isHighlight else { return false }
-        guard !gesture.optionHeld else { return false }
+        guard gesture.optionHeld else { return false }
         guard !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if gesture.clickCount >= 2 { return true }
         return selectedText != gesture.snapshot

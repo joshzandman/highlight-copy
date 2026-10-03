@@ -503,9 +503,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             publishStatus()
             return
         }
-        // Return before any pasteboard write or Command-C. Option during the gesture means leave the clipboard alone.
-        if gesture.optionHeld {
-            lastDebug = "option"
+        // Return before any pasteboard write or Command-C. A highlight copies only when Option was held.
+        if !gesture.optionHeld {
+            lastDebug = "no-option"
             publishStatus()
             return
         }

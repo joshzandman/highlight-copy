@@ -1,19 +1,19 @@
 # Highlight Copy
 
-Highlight Copy is a macOS menu-bar app. Highlight text with the mouse or trackpad and, when you release, that text is copied to the clipboard. A small “copied” label appears at the end of the highlight.
+Highlight Copy is a macOS menu-bar app. Hold the Option key while you highlight text with the mouse or trackpad and, when you release, that text is copied to the clipboard. A small “copied” label appears at the end of the highlight.
 
 It has no Dock icon. The menu-bar clipboard icon stays available while you work.
 
 ## What it copies
 
-A highlight is a drag, including trackpad click-drag, tap-to-click drag, and three-finger drag, or a double-click or triple-click that selects a word or line.
+A highlight is a drag, including trackpad click-drag, tap-to-click drag, and three-finger drag, or a double-click or triple-click that selects a word or line. The copy happens when Option is down at any point during that gesture.
 
 These actions do not change the clipboard:
 
 - A plain click
 - A drag that does not change the existing selection
 - Text in a password field
-- A highlight made while holding the Option key. Holding it at any point during the drag, double-click, or triple-click skips the copy.
+- A highlight made without holding the Option key
 
 ## Requirements
 
